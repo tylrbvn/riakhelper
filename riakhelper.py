@@ -186,8 +186,8 @@ class RiakHelper(object):
             bucket = self.config[self.CONFIG_DEFAULT_BUCKET]
         command = 'curl -is {0}/buckets/{1}/keys/{2}'.format(self.baseUrl, bucket, key)
         result = self._executeCommand(command)
-        if len(result) < self.PRETTY_PRINT_JSON_LIMIT:
-            jsonResult = json.loads(result)
+        if 0 < len(result) < self.PRETTY_PRINT_JSON_LIMIT:   
+	    jsonResult = json.loads(result)
             result = json.dumps(jsonResult, indent=3)
         print result
 
