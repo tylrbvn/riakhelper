@@ -33,10 +33,13 @@ class RiakHelper(object):
         self.menu['5'] = ('Perform secondary index query', self._indexQuery)
         self.menu['6'] = ('Perform secondary index query (Returning terms)', self._indexQueryReturnTerms)
         self.menu['7'] = ('Produce secondary index query with regex', self._produceIndexQueryRegex)
-        self.menu['8'] = ('Show config', self._showConfig)
-        self.menu['9'] = ('Exit', self._exit)
+	self.menu['8'] = ('Delete a record', self._deleteRecord)
+        self.menu['9'] = ('Show config', self._showConfig)
+	self.menu['10'] = ('Redo last command', self._redoCommand)
+        self.menu['11'] = ('Exit', self._exit)
 
         self.baseUrl = 'http://{0}:{1}'.format(self.config[self.CONFIG_HOST], self.config[self.CONFIG_PORT])
+	self.lastCommand = ''
 
     ############## MAIN FUNCTIONS ##############
 
@@ -100,9 +103,13 @@ class RiakHelper(object):
     def _listKeys(self):
         """ Docstring """
         try:
-            bucket = raw_input('\nEnter bucket: ')
+            bucket = raw_input('\nEnter bucket (Leave blank for default = {0}): '\
+                                                                .format(self.config[self.CONFIG_DEFAULT_BUCKET]))
         except SyntaxError:
             self._continue()
+
+        if not bucket:
+            bucket = self.config[self.CONFIG_DEFAULT_BUCKET]
 
         command = 'curl -is {0}/buckets/{1}/keys?keys=true'.format(self.baseUrl, bucket)
         result = self._executeCommand(command)
@@ -142,6 +149,21 @@ class RiakHelper(object):
         """ Docstring """
         print '\nCurrent config: {0}'.format(self.config)
 
+    def _redoCommand(self):
+        """ Docstring """
+        result = self._executeCommand(self.lastCommand)
+        print result
+
+    def _deleteRecord(self):
+        """ Docstring """
+        try:
+            bucket = raw_input('\nEnter bucket (Leave blank for default = {0}): '\
+                                                                .format(self.config[self.CONFIG_DEFAULT_BUCKET]))
+            key = raw_input('Enter key: ')
+        except SyntaxError:
+            self._continue()
+        self._delete(key, bucket)
+
     ############## HELPER FUNCTIONS ##############
 
     def _executeCommand(self, command):
@@ -150,7 +172,8 @@ class RiakHelper(object):
         try:
             input('\nHit ENTER to confirm or type anything to cancel\n')
         except SyntaxError:
-            data = subprocess.check_output(command.split()).split('\n')
+    	    self.lastCommand = command
+       	    data = subprocess.check_output(command.split()).split('\n')
             indexes = False
             for line in data:
                 if line.startswith('x-riak-index'):
@@ -196,6 +219,13 @@ class RiakHelper(object):
         if not bucket:
             bucket = self.config[self.CONFIG_DEFAULT_BUCKET]
         command = 'curl -is {0}/buckets/{1}/keys/{2}'.format(self.baseUrl, bucket, key)
+        self._executeCommand(command)
+
+    def _delete(self, key, bucket=None):
+        """ Docstring """
+        if not bucket:
+            bucket = self.config[self.CONFIG_DEFAULT_BUCKET]
+        command = 'curl -v -X DELETE {0}/buckets/{1}/keys/{2}'.format(self.baseUrl, bucket, key)
         self._executeCommand(command)
 
     def _outputHeader(self):
